@@ -37,21 +37,27 @@ wire [31:0]RegA;
 wire [31:0]RegB;
 reg [31:0]AluOut;
 wire [31:0]_AluOut;
-reg [14:0]RegDst;
+reg [9:0]RegDst;
 wire IOrR;
 reg [1:0]RegWrite;
 wire _RegWrite;
-wire _Load;
 reg [1:0]Load;
+wire _Load;
+reg BusWrite;
+wire _BusWrite;
 reg [31:0]SignImm;
-
+reg [31:0]RegBPrev;
+reg [31:0]InstrPrev;
 
 always@(posedge clk) begin
-    RegDst <= {IOrR ? Instr[15:11] : Instr[20:16], RegDst[14:5]};
+    RegDst <= {IOrR ? InstrPrev[15:11] : InstrPrev[20:16], RegDst[9:5]};
     RegWrite <= {_RegWrite, RegWrite[1]};
     AluOut <= _AluOut;
     Load <= {_Load, Load[1]};
+    BusWrite <= _BusWrite;
     SignImm <= {(Instr[15] ? 16'hffff : 16'h0), Instr[15:0]};
+    RegBPrev <= RegB;
+    InstrPrev <= Instr;
 end
 
 always@(posedge clk or posedge rst) begin
@@ -70,16 +76,17 @@ Control control(
     .alu_op(AluOp),
     .i_or_r(IOrR),
     .reg_write(_RegWrite),
-    .load(_Load)
+    .load(_Load),
+    .bus_write(_BusWrite)
 );
 
 Bus bus(
     .clk(clk),
     .a_addr(PC),
     .a_out(Instr),
-    .b_addr(0),
-    .b_we(0),
-    .b_in(_AluOut),
+    .b_addr(_AluOut),
+    .b_we(BusWrite),
+    .b_in(RegBPrev),
     .b_out(BusOut)
 );
 
