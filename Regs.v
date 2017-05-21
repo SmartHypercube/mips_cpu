@@ -14,8 +14,8 @@ module Regs(
 reg [31:0]r[31:0];
 
 always@(posedge clk) begin
-    a_out <= a_addr ? ((a_addr == c_addr) ? c_in : r[a_addr]) : 0;
-    b_out <= b_addr ? ((b_addr == c_addr) ? c_in : r[b_addr]) : 0;
+    a_out <= a_addr ? ((c_we && a_addr == c_addr) ? c_in : r[a_addr]) : 0;
+    b_out <= b_addr ? ((c_we && b_addr == c_addr) ? c_in : r[b_addr]) : 0;
     if(c_we)
         r[c_addr] <= c_in;
 end

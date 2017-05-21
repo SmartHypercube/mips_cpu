@@ -9,10 +9,12 @@ module Alu(
 );
 
 parameter ADD = 1;
+parameter GT  = 7;
 
 always@(posedge clk) begin
     case(op)
         ADD:     out <= a + b;
+        GT:      out <= a > b;
         default: out <= 0;
     endcase
 end

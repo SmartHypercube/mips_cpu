@@ -46,8 +46,12 @@ wire _Load;
 reg BusWrite;
 wire _BusWrite;
 reg [31:0]SignImm;
+reg [31:0]SignImmPrev;
 reg [31:0]RegBPrev;
 reg [31:0]InstrPrev;
+wire _Branch;
+reg Branch;
+wire Jump;
 
 always@(posedge clk) begin
     RegDst <= {IOrR ? InstrPrev[15:11] : InstrPrev[20:16], RegDst[9:5]};
@@ -56,8 +60,10 @@ always@(posedge clk) begin
     Load <= {_Load, Load[1]};
     BusWrite <= _BusWrite;
     SignImm <= {(Instr[15] ? 16'hffff : 16'h0), Instr[15:0]};
+    SignImmPrev <= SignImm;
     RegBPrev <= RegB;
     InstrPrev <= Instr;
+    Branch <= _Branch;
 end
 
 // 检测冒险
@@ -67,19 +73,31 @@ always@(posedge clk or posedge rst) begin
         PCE <= 0;
     end
     else begin
-        PC <= {PC[127:0], PC[31:0] + 4};
-        PCE <= {PCE[2:0], 1'b1};
+        if(Branch && PCE[2] && _AluOut) begin
+            // 遇到Branch时清除上三条指令
+            PC <= {PC[127:0], PC[127:96] + 4 + (SignImmPrev << 2)};
+            PCE <= 4'b0000;
+        end
+        else if(Jump && PCE[1]) begin
+            // 遇到Jump时清除上两条指令
+            PC <= {PC[127:0], PC[95:92], InstrPrev[25:0], 2'b00};
+            PCE <= {PCE[2], 3'b000};
+        end
+        else begin
+            PC <= {PC[127:0], PC[31:0] + 4};
+            PCE <= {PCE[2:0], 1'b1};
+        end
         if(BusWrite & PCE[2]) begin
             // 正在执行的指令可能被修改了
             if(_AluOut == PC[95:64] && PCE[1]) begin
                 // 重新执行上两条指令
                 PC <= PC[95:64];
-                PCE <= {PCE[0], 3'b000};
+                PCE <= {PCE[2], 3'b000};
             end
             else if(_AluOut == PC[63:32] && PCE[0]) begin
                 // 重新执行上一条指令
                 PC <= PC[63:32];
-                PCE <= {PCE[1:0], 2'b00};
+                PCE <= {PCE[2:1], 2'b00};
             end
         end
         if(RegWrite[1] & PCE[2]) begin
@@ -87,22 +105,22 @@ always@(posedge clk or posedge rst) begin
             if(InstrPrev[25:21] == RegDst[9:5] && PCE[1]) begin
                 // 重新执行上两条指令
                 PC <= PC[95:64];
-                PCE <= {PCE[0], 3'b000};
+                PCE <= {PCE[2], 3'b000};
             end
             else if(InstrPrev[20:16] == RegDst[9:5] && PCE[1]) begin
                 // 重新执行上两条指令
                 PC <= PC[95:64];
-                PCE <= {PCE[0], 3'b000};
+                PCE <= {PCE[2], 3'b000};
             end
             else if(Instr[25:21] == RegDst[9:5] && PCE[0]) begin
                 // 重新执行上一条指令
                 PC <= PC[63:32];
-                PCE <= {PCE[1:0], 2'b00};
+                PCE <= {PCE[2:1], 2'b00};
             end
             else if(Instr[20:16] == RegDst[9:5] && PCE[0]) begin
                 // 重新执行上一条指令
                 PC <= PC[63:32];
-                PCE <= {PCE[1:0], 2'b00};
+                PCE <= {PCE[2:1], 2'b00};
             end
         end
     end
@@ -116,7 +134,9 @@ Control control(
     .i_or_r(IOrR),
     .reg_write(_RegWrite),
     .load(_Load),
-    .bus_write(_BusWrite)
+    .bus_write(_BusWrite),
+    .branch(_Branch),
+    .jump(Jump)
 );
 
 Bus bus(
