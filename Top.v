@@ -74,12 +74,12 @@ always@(posedge clk or posedge rst) begin
             if(_AluOut == PC[95:64] && PCE[1]) begin
                 // 重新执行上两条指令
                 PC <= PC[95:64];
-                PCE <= 4'b1100;
+                PCE <= {PCE[0], 3'b000};
             end
             else if(_AluOut == PC[63:32] && PCE[0]) begin
                 // 重新执行上一条指令
                 PC <= PC[63:32];
-                PCE <= 4'b1110;
+                PCE <= {PCE[1:0], 2'b00};
             end
         end
         if(RegWrite[1] & PCE[2]) begin
