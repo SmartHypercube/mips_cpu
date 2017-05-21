@@ -28,8 +28,8 @@ module Top(
     input rst
 );
 
-reg [31:0]PC;
-wire [3:0]Stall;
+reg [159:0]PC;      // 当前PC在低位，高位依次为历史上的PC
+reg [3:0]PCE;       // 指示PC四段历史中的有效部分，无效的无须考虑冒险
 wire [31:0]Instr;
 wire [2:0]AluOp;
 wire [31:0]BusOut;
@@ -51,8 +51,8 @@ reg [31:0]InstrPrev;
 
 always@(posedge clk) begin
     RegDst <= {IOrR ? InstrPrev[15:11] : InstrPrev[20:16], RegDst[9:5]};
-    RegWrite <= {_RegWrite, RegWrite[1]};
     AluOut <= _AluOut;
+    RegWrite <= {_RegWrite, RegWrite[1]};
     Load <= {_Load, Load[1]};
     BusWrite <= _BusWrite;
     SignImm <= {(Instr[15] ? 16'hffff : 16'h0), Instr[15:0]};
@@ -60,19 +60,58 @@ always@(posedge clk) begin
     InstrPrev <= Instr;
 end
 
+// 检测冒险
 always@(posedge clk or posedge rst) begin
-    if(rst)
+    if(rst) begin
         PC <= 0;
-    else
-        PC <= Stall ? PC : PC + 4;
+        PCE <= 0;
+    end
+    else begin
+        PC <= {PC[127:0], PC[31:0] + 4};
+        PCE <= {PCE[2:0], 1'b1};
+        if(BusWrite & PCE[2]) begin
+            // 正在执行的指令可能被修改了
+            if(_AluOut == PC[95:64] && PCE[1]) begin
+                // 重新执行上两条指令
+                PC <= PC[95:64];
+                PCE <= 4'b1100;
+            end
+            else if(_AluOut == PC[63:32] && PCE[0]) begin
+                // 重新执行上一条指令
+                PC <= PC[63:32];
+                PCE <= 4'b1110;
+            end
+        end
+        if(RegWrite[1] & PCE[2]) begin
+            // 要读取的寄存器可能被修改了
+            if(InstrPrev[25:21] == RegDst[9:5] && PCE[1]) begin
+                // 重新执行上两条指令
+                PC <= PC[95:64];
+                PCE <= {PCE[0], 3'b000};
+            end
+            else if(InstrPrev[20:16] == RegDst[9:5] && PCE[1]) begin
+                // 重新执行上两条指令
+                PC <= PC[95:64];
+                PCE <= {PCE[0], 3'b000};
+            end
+            else if(Instr[25:21] == RegDst[9:5] && PCE[0]) begin
+                // 重新执行上一条指令
+                PC <= PC[63:32];
+                PCE <= {PCE[1:0], 2'b00};
+            end
+            else if(Instr[20:16] == RegDst[9:5] && PCE[0]) begin
+                // 重新执行上一条指令
+                PC <= PC[63:32];
+                PCE <= {PCE[1:0], 2'b00};
+            end
+        end
+    end
 end
 
 Control control(
     .clk(clk),
-    .rst(rst),
     .op(Instr[31:26]),
     .funct(Instr[5:0]),
-    .stall(Stall),
     .alu_op(AluOp),
     .i_or_r(IOrR),
     .reg_write(_RegWrite),
@@ -82,10 +121,10 @@ Control control(
 
 Bus bus(
     .clk(clk),
-    .a_addr(PC),
+    .a_addr(PC[31:0]),
     .a_out(Instr),
     .b_addr(_AluOut),
-    .b_we(BusWrite),
+    .b_we(BusWrite & PCE[2]),
     .b_in(RegBPrev),
     .b_out(BusOut)
 );
@@ -97,7 +136,7 @@ Regs regs(
     .b_addr(Instr[20:16]),
     .b_out(RegB),
     .c_addr(RegDst[4:0]),
-    .c_we(RegWrite[0]),
+    .c_we(RegWrite[0] & PCE[3]),
     .c_in(Load[0] ? BusOut : AluOut)
 );
 
