@@ -100,7 +100,7 @@ always@(posedge clk or posedge rst) begin
                 PCE <= {PCE[2:1], 2'b00};
             end
         end
-        if(RegWrite[1] & PCE[2] && RegDst[9:5]) begin
+        if(RegWrite[1] & PCE[1] && RegDst[9:5]) begin
             // 要读取的寄存器可能被修改了
             if(InstrPrev[25:21] == RegDst[9:5] && PCE[1]) begin
                 // 重新执行上两条指令

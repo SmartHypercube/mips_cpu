@@ -72,7 +72,7 @@ parameter ADD   = 6'b100000;
 
 always@(posedge clk) begin
     i_or_r <= !op;
-    reg_write <= (op[5] ^ op[3]) || op;
+    reg_write <= (op[5] ^ op[3]) || !op;
     bus_write <= op[5] & op[3];
     load <= op[5] & ~op[3];
     branch <= ~op[5] & ~op[3] & (op[2] | ~op[1] & op[0]);
