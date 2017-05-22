@@ -1,28 +1,5 @@
 `timescale 1ns / 1ps
 
-/*
-GENERAL
- #rst  #########################################
-  clk  _####____####____####____####____####____#
- ramaa  <  PC  >
- ramao          < ADDI >
- regaa          < #num1>
- regba          < #num2>
- regao                  < num1 >
- regbo                  < num2 >
- aluop                  <  op  >
- alua                   < num1 >
- alub                   < num2 >
- aluo                           <result>
- ramba                          <ramadd>
- rambw                          ????????
- rambi                          <result>
- rambo                                  <result>
- regca                                  < #out >
- regcw                                  ########
- regci                                  <result>
-*/
-
 module Top(
     input clk,
     input rst

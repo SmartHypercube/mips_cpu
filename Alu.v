@@ -12,34 +12,20 @@ wire signed [31:0]sa;
 assign sa = a;
 wire signed [31:0]sb;
 assign sb = b;
-
-// 这个优秀的思路来自 http://stackoverflow.com/a/2376530
 wire [4:0]clo;
-assign clo[4] = a[31:16] == 16'b1111111111111111;
-wire [15:0]clo_v16;
-assign clo_v16 = clo[4] ? a[15:0] : a[31:16];
-assign clo[3] = clo_v16[15:8] == 8'b11111111;
-wire [7:0]clo_v8;
-assign clo_v8 = clo[3] ? clo_v16[7:0] : clo_v16[15:8];
-assign clo[2] = clo_v8[7:4] == 4'b1111;
-wire [3:0]clo_v4;
-assign clo_v4 = clo[2] ? clo_v8[3:0] : clo_v8[7:4];
-assign clo[1] = clo_v4[3:2] == 2'b11;
-assign clo[0] = clo[1] ? clo_v4[1] : clo_v4[3];
-
 wire [4:0]clz;
-assign clz[4] = a[31:16] == 16'b0;
-wire [15:0]clz_v16;
-assign clz_v16 = clz[4] ? a[15:0] : a[31:16];
-assign clz[3] = clz_v16[15:8] == 8'b0;
-wire [7:0]clz_v8;
-assign clz_v8 = clz[3] ? clz_v16[7:0] : clz_v16[15:8];
-assign clz[2] = clz_v8[7:4] == 4'b0;
-wire [3:0]clz_v4;
-assign clz_v4 = clz[2] ? clz_v8[3:0] : clz_v8[7:4];
-assign clz[1] = clz_v4[3:2] == 2'b0;
-assign clz[0] = clz[1] ? ~clz_v4[1] : ~clz_v4[3];
 
+Cl _clo(
+    .value(a),
+    .bit(1),
+    .result(clo)
+);
+
+Cl _clz(
+    .value(a),
+    .bit(0),
+    .result(clz)
+);
 
 // 以下编码采用op或funct的低4位
 parameter ADD1 = 0;
