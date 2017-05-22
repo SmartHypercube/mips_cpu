@@ -31,7 +31,7 @@ module Top(
 reg [159:0]PC;      // 当前PC在低位，高位依次为历史上的PC
 reg [3:0]PCE;       // 指示PC四段历史中的有效部分，无效的无须考虑冒险
 wire [31:0]Instr;
-wire [2:0]AluOp;
+wire [4:0]AluOp;
 wire [31:0]BusOut;
 wire [31:0]RegA;
 wire [31:0]RegB;
